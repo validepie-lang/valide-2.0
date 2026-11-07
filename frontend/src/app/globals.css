@@ -1,0 +1,404 @@
+@import "tailwindcss";
+
+/* Tema por classe, nao por preferencia do sistema.
+   A preferencia do sistema vira classe no <html> antes da hidratacao. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   Tokens do Valide
+   Fonte da verdade: docs/01-references/design-system.md
+   Nenhum hex fora deste arquivo.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Cobalto sobre papel (issue 064, 11/10): tinta cobalto sobre um fundo de
+     papel levemente quente, escolhida pelo Marcus entre quatro azuis aplicados
+     nas telas reais. Base: Farmacia Panata (Behance, 1.403), cobalto com cor
+     clara. O azul nao e cor de status, entao nao disputa com vermelho, ambar e
+     verde; as cores de validade continuam as unicas cores quentes da tela */
+
+  /* superficies */
+  --bg-page: #f5f4f0;
+  --bg-surface: #ffffff;
+  --bg-surface-raised: #ffffff;
+  --bg-sunken: #ecebe5;
+  --line: #e2dfd7;
+  --line-strong: #cbc6ba;
+
+  /* texto */
+  --fg: #16181f;
+  --fg-muted: #5a5e6b;
+  --fg-disabled: #a3a49f;
+
+  /* acao primaria: navy no claro */
+  --primary: #1a3a8f;
+  --primary-hover: #142e73;
+  --primary-pressed: #0f235a;
+  --primary-fg: #ffffff;
+  --primary-soft: #e2e8f7;
+
+  /* acento ceu: item ativo, link, foco, pico de grafico. Nunca status */
+  --accent: #2a55d0;
+  --accent-soft: #e1e8fb;
+  --accent-strong: #1e44b0;
+
+  /* trilho lateral: escuro nos dois temas, ancora da marca */
+  --rail: #121c3d;
+  --rail-fg: #e8ecf8;
+  --rail-muted: #8f9bc0;
+  --rail-line: #1e2a52;
+  --rail-active-bg: #24356e;
+  --rail-active-fg: #b7c8ff;
+
+  /* superficie escura de destaque: login, cadastro, resultado de importacao */
+  --accent-deep: #1a3a8f;
+  --accent-deep-2: #121c3d;
+  --accent-deep-fg: #ffffff;
+  --accent-deep-muted: #b4c0e6;
+  --accent-deep-line: #34509e;
+
+  /* status de validade: o tom solido e igual nos dois temas */
+  --status-expired: #d64545;
+  --status-expired-bg: #fbe7e7;
+  --status-expired-fg: #b23a3a;
+
+  --status-soon: #e0a020;
+  --status-soon-bg: #fceedb;
+  --status-soon-fg: #8a610d;
+
+  --status-ok: #3c9d53;
+  --status-ok-bg: #e7f5ea;
+  --status-ok-fg: #2f7d46;
+
+  /* ausencia de dado, nao e status de validade */
+  --status-unknown: #9faeb8;
+  --status-unknown-bg: #eef1f4;
+  --status-unknown-fg: #56697a;
+
+  /* padrao de grafico (08/10): base neutra, destaque so onde o dado pede.
+     Com rotulo direto em cada barra, a barra nao e o unico meio de ler o dado */
+  --chart-base: #a7aec4;
+  --chart-focus: #1a3a8f;
+  /* direcao A (09/10): semana dentro da janela de A vencer pinta em ambar,
+     porque os lotes dela sao A vencer; o pico em ambar mais fundo */
+  --chart-soon: var(--status-soon);
+  --chart-soon-focus: #b97f0c;
+  /* rosca "Em risco por pasta" (issue 067): tons da tinta, do mais forte ao
+     mais claro, nunca cor de status. "Outras pastas" usa a base neutra. A
+     legenda ao lado escreve o numero, entao a cor nao e o unico meio de ler */
+  --chart-share-1: #1a3a8f;
+  --chart-share-2: #3d62d4;
+  --chart-share-3: #7a96e8;
+  --chart-share-4: #b0c1f3;
+
+  /* fundo tingido do cartao de status urgente (direcao A, 09/10). Leve o
+     bastante para o texto escuro continuar acima de 12:1 */
+  --status-expired-tint: #fff6f6;
+  --status-soon-tint: #fffbf3;
+
+  /* cartao do indicador principal da Home: cheio e escuro, na cor do trilho
+     lateral, como nos paineis de referencia do Behance (issue 027). Texto a
+     13,9:1 e apoio a 6,1:1 */
+  --feature: #121c3d;
+  --feature-fg: #e8ecf8;
+  --feature-muted: #8f9bc0;
+  --feature-line: #24305a;
+
+  /* erro que impede continuar: o mesmo vermelho de Vencido, nunca um segundo.
+     Vermelho quer dizer "problema que exige acao". Decisao de 08/10 */
+  --error: var(--status-expired);
+  --error-bg: var(--status-expired-bg);
+  --error-fg: var(--status-expired-fg);
+
+  /* foco e elevacao. Revisto em 09/10 (direcao A): card ganha uma sombra
+     curta para separar do fundo; camada flutuante continua com a maior */
+  --focus-ring: #2a55d0;
+
+  /* cor de assinatura (issue 064): lavanda-cobalto, so sobre superficie escura
+     (trilho, cartao cheio, painel do login), nunca perto de chip de status.
+     Igual nos dois temas, porque essas superficies sao escuras nos dois */
+  --signature: #b7c8ff;
+  --signature-hover: #d0dbff;
+  --signature-fg: #121c3d;
+  --elevation-card: 0 1px 3px rgb(18 28 61 / 0.08), 0 1px 2px rgb(18 28 61 / 0.04);
+  /* botão principal (issue 066, item 32): a sombra curta com o matiz da tinta */
+  --elevation-button: 0 1px 2px rgb(18 28 61 / 0.16);
+  --elevation-pop: 0 4px 8px rgb(18 28 61 / 0.08), 0 16px 32px rgb(18 28 61 / 0.12);
+  --elevation-deep: 0 14px 34px rgb(18 28 61 / 0.22);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --bg-page: #0f1220;
+  --bg-surface: #171b2c;
+  --bg-surface-raised: #1e2338;
+  --bg-sunken: #0b0e19;
+  --line: #262b42;
+  --line-strong: #353c5a;
+
+  --fg: #eceef6;
+  --fg-muted: #a3a9c2;
+  --fg-disabled: #5d6380;
+
+  /* botao principal claro, como o "Buy" da referencia */
+  --primary: #c3d0ff;
+  --primary-hover: #d6dfff;
+  --primary-pressed: #aebfff;
+  --primary-fg: #121c3d;
+  --primary-soft: #222a48;
+
+  --accent: #8fa8ff;
+  --accent-soft: #1f2950;
+  --accent-strong: #b7c8ff;
+
+  --rail: #0b0e1a;
+  --rail-line: #1a1f36;
+  --rail-active-bg: #232c55;
+
+  --accent-deep: #171b2c;
+  --accent-deep-2: #0b0e19;
+  --accent-deep-fg: #eceef6;
+  --accent-deep-muted: #a3a9c2;
+  --accent-deep-line: #2c3352;
+
+  /* o solido nao muda. Muda o fundo e o texto do chip, para nao virar mancha clara */
+  --status-expired-bg: #552e32;
+  --status-expired-fg: #f5b4b4;
+
+  --status-soon-bg: #513f20;
+  --status-soon-fg: #f4d28c;
+
+  --status-ok-bg: #2a4733;
+  --status-ok-fg: #9bdaae;
+
+  --status-unknown: #6a7f95;
+  --status-unknown-bg: #34445a;
+  --status-unknown-fg: #c3d1df;
+
+  --chart-base: #4a5274;
+  --chart-focus: #c3d0ff;
+  --chart-soon-focus: #f0bf55;
+  --chart-share-1: #c3d0ff;
+  --chart-share-2: #8fa8ff;
+  --chart-share-3: #5b78dd;
+  --chart-share-4: #3a4f9e;
+
+  --status-expired-tint: #2b2026;
+  --status-soon-tint: #2a2620;
+
+  /* no escuro, o cartao principal fica um tom ACIMA do card (que e #212d3d):
+     mais escuro que os outros pareceria afundado. Texto a 9,2:1, apoio a 5,9:1 */
+  --feature: #232a48;
+  --feature-fg: #eceef6;
+  --feature-muted: #b4bddb;
+  --feature-line: #323b62;
+
+  --focus-ring: #8fa8ff;
+  --elevation-card: 0 1px 2px rgb(0 0 0 / 0.30);
+  --elevation-button: 0 1px 2px rgb(0 0 0 / 0.40);
+  --elevation-pop: 0 8px 24px rgb(0 0 0 / 0.40);
+  --elevation-deep: 0 16px 40px rgb(0 0 0 / 0.45);
+}
+
+/* ==========================================================================
+   Ponte para o Tailwind
+   Gera bg-surface, text-fg-muted, bg-status-expired-bg, border-line, etc.
+   ========================================================================== */
+
+@theme inline {
+  --color-page: var(--bg-page);
+  --color-surface: var(--bg-surface);
+  --color-raised: var(--bg-surface-raised);
+  --color-sunken: var(--bg-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-disabled: var(--fg-disabled);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-feature: var(--feature);
+  --color-feature-fg: var(--feature-fg);
+  --color-feature-muted: var(--feature-muted);
+  --color-feature-line: var(--feature-line);
+  --color-deep: var(--accent-deep);
+  --color-deep-2: var(--accent-deep-2);
+  --color-deep-fg: var(--accent-deep-fg);
+  --color-deep-muted: var(--accent-deep-muted);
+  --color-deep-line: var(--accent-deep-line);
+
+  --color-status-expired: var(--status-expired);
+  --color-status-expired-bg: var(--status-expired-bg);
+  --color-status-expired-fg: var(--status-expired-fg);
+
+  --color-status-soon: var(--status-soon);
+  --color-status-soon-bg: var(--status-soon-bg);
+  --color-status-soon-fg: var(--status-soon-fg);
+
+  --color-status-ok: var(--status-ok);
+  --color-status-ok-bg: var(--status-ok-bg);
+  --color-status-ok-fg: var(--status-ok-fg);
+
+  --color-status-unknown: var(--status-unknown);
+  --color-status-unknown-bg: var(--status-unknown-bg);
+  --color-status-unknown-fg: var(--status-unknown-fg);
+
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  --color-error-fg: var(--error-fg);
+
+  --color-chart-base: var(--chart-base);
+  --color-chart-focus: var(--chart-focus);
+  --color-chart-soon: var(--chart-soon);
+  --color-status-expired-tint: var(--status-expired-tint);
+  --color-status-soon-tint: var(--status-soon-tint);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
+
+  --color-rail: var(--rail);
+  --color-rail-fg: var(--rail-fg);
+  --color-rail-muted: var(--rail-muted);
+  --color-rail-line: var(--rail-line);
+  --color-rail-active: var(--rail-active-bg);
+  --color-rail-active-fg: var(--rail-active-fg);
+
+  --color-focus: var(--focus-ring);
+  --color-signature: var(--signature);
+  --color-signature-hover: var(--signature-hover);
+  --color-signature-fg: var(--signature-fg);
+
+  --shadow-card: var(--elevation-card);
+  --shadow-button: var(--elevation-button);
+  --shadow-pop: var(--elevation-pop);
+  --shadow-deep: var(--elevation-deep);
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Forma e escala nao mudam com o tema, entao ficam direto no tema do Tailwind */
+@theme {
+  /* card: 14px (08/10). lg e xl desligados: sem isso, rounded-lg voltaria ao
+     valor padrao do Tailwind sem ninguem perceber */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: initial;
+  --radius-xl: initial;
+  --radius-pill: 999px;
+
+  /* escala do design system: 4, 8, 12, 16, 24, 32, 48 */
+  --spacing: 4px;
+
+  /* escala de 08/10, design-system.md secao 14.1. Uma familia so desde 11/10
+     (Instrument Sans); font-display continua marcando titulo e numero herói */
+  --text-display: 32px;
+  --text-display--line-height: 38px;
+  --text-display--letter-spacing: -0.02em;
+  /* titulo de pagina abaixo de md */
+  --text-display-sm: 24px;
+  --text-display-sm--line-height: 30px;
+  --text-display-sm--letter-spacing: -0.015em;
+  --text-section: 18px;
+  --text-section--line-height: 24px;
+  --text-section--letter-spacing: -0.01em;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+  --text-micro: 12px;
+  --text-micro--line-height: 16px;
+  --text-metric: 28px;
+  --text-metric--line-height: 32px;
+  --text-metric--letter-spacing: -0.02em;
+  --text-hero: 60px;
+  --text-hero--line-height: 60px;
+  --text-hero--letter-spacing: -0.03em;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--fg);
+    font-size: 14px;
+    line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Foco desenhado, nunca o padrao do navegador e nunca removido sem substituto */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Numeros de dado tabulares, para a coluna alinhar pela casa e o contador
+     nao pular quando muda. 08/10/2026. Na Instrument Sans o tabular mantem o
+     zero sem ponto e nao alarga virgula nem hifen (medido em 11/10) */
+  .tnum {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  /* Numero grande (titulo e heroi) fica proporcional, mesmo com .tnum dentro:
+     no tamanho de exibicao o espaco do tabular abre buracos entre os digitos */
+  .font-display,
+  .font-display .tnum {
+    font-variant-numeric: lining-nums proportional-nums;
+  }
+
+  ::selection {
+    background-color: var(--primary);
+    color: var(--primary-fg);
+  }
+}
+
+@layer components {
+  /* Trilho de rolagem discreto, para painel lateral e tabela longa */
+  .scroll-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+  }
+  .scroll-slim::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-slim::-webkit-scrollbar-thumb {
+    background-color: var(--line-strong);
+    border-radius: 999px;
+  }
+  .scroll-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

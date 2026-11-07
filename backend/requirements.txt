@@ -1,0 +1,8 @@
+# Dependências do backend (backend/). O acesso ao banco fica em database.py.
+fastapi>=0.116
+uvicorn[standard]>=0.30
+python-dotenv>=1.0
+# Necessário para o upload da foto do produto (multipart/form-data).
+python-multipart>=0.0.9
+# Somente para o motor PostgreSQL/Supabase (o SQLite usa a biblioteca padrão):
+# psycopg2-binary>=2.9

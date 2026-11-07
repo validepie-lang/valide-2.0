@@ -1,0 +1,19 @@
+.DS_Store
+
+# Segredos: nunca versionar (use .env.example como modelo)
+.env
+.env.local
+
+# Banco SQLite local: binario, muda a cada execucao
+data/*.db
+data/*.db-journal
+data/*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Uploads gerados em tempo de execucao
+data/uploads/
