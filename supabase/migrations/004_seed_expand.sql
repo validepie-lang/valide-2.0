@@ -9,7 +9,7 @@
 --     - pastas de produto
 --     - custo, preço, unidade, estoque mínimo, marca, fornecedor e SKU
 --       de cada um dos 12 produtos do seed 002
---     - motivo da movimentação no histórico (sale / internal)
+--     - motivo da movimentação: as novas são gravadas pela aplicação
 --     - data de fabricação de alguns lotes
 --
 -- IMPORTANTE:
@@ -176,20 +176,7 @@ UPDATE public.lotes_estoque
 
 
 -- ============================================================
--- 5. MOTIVO DAS MOVIMENTAÇÕES DO HISTÓRICO
--- ============================================================
---   VENDA   -> sale     (perda não; é venda)
---   AJUSTE  -> internal (consumo/ajuste interno)
---   ENTRADA -> NULL     (entrada não tem motivo de saída)
---   DESCARTE-> expiry   (quando existir)
--- ============================================================
-UPDATE public.historico_movimentacao SET motivo = 'sale'     WHERE tipo_movimentacao = 'VENDA'  AND motivo IS NULL;
-UPDATE public.historico_movimentacao SET motivo = 'internal' WHERE tipo_movimentacao = 'AJUSTE' AND motivo IS NULL;
-UPDATE public.historico_movimentacao SET motivo = 'expiry'   WHERE tipo_movimentacao = 'DESCARTE' AND motivo IS NULL;
-
-
--- ============================================================
--- 6. NOTIFICAÇÕES DE EXEMPLO (sino do cabeçalho)
+-- 5. NOTIFICAÇÕES DE EXEMPLO (sino do cabeçalho)
 -- ============================================================
 INSERT INTO public.notificacoes (id_empresa, id_usuario, tipo, titulo, corpo, lida, link)
 SELECT 1, NULL, 'system', 'Bem-vindo ao Valide',
