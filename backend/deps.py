@@ -89,25 +89,83 @@ def _empresa_de(conn, id_empresa: int) -> dict:
 
 
 def sessao_atual(valide_session: Annotated[str | None, Cookie()] = None) -> Sessao:
-    """Dependência do FastAPI: monta a `Sessao` ou responde 401."""
+    """Dependência do FastAPI: monta a `Sessao` ou responde 401.
+
+    Uma única consulta JOIN busca usuário, perfil e empresa. Antes eram duas
+    consultas separadas (usuário + empresa), e como esta dependência roda em
+    TODA rota protegida, cada requisição ganhava uma ida e volta ao banco.
+    Combinando as duas, economizamos uma consulta por requisição.
+    """
     usuario_id = ler_token(valide_session)
     if usuario_id is None:
         raise nao_autorizado()
 
     with conexao() as conn:
-        usuario = consultar_um(
+        linha = consultar_um(
             conn,
             """
-            SELECT u.*, pa.nivel, pa.nome_perfil
+            SELECT u.*, pa.nivel, pa.nome_perfil,
+                   e.id_empresa AS emp_id_empresa,
+                   e.cnpj AS emp_cnpj,
+                   e.razao_social AS emp_razao_social,
+                   e.nome_fantasia AS emp_nome_fantasia,
+                   e.inscricao_estadual AS emp_inscricao_estadual,
+                   e.inscricao_municipal AS emp_inscricao_municipal,
+                   e.regime_tributario AS emp_regime_tributario,
+                   e.cep AS emp_cep,
+                   e.logradouro AS emp_logradouro,
+                   e.numero AS emp_numero,
+                   e.complemento AS emp_complemento,
+                   e.bairro AS emp_bairro,
+                   e.cidade AS emp_cidade,
+                   e.uf AS emp_uf,
+                   e.telefone AS emp_telefone,
+                   e.email AS emp_email,
+                   e.site AS emp_site,
+                   e.logo_url AS emp_logo_url,
+                   e.fuso_horario AS emp_fuso_horario,
+                   e.moeda AS emp_moeda,
+                   e.idioma AS emp_idioma,
+                   e.janela_a_vencer_dias AS emp_janela_a_vencer_dias,
+                   e.created_at AS emp_created_at,
+                   e.updated_at AS emp_updated_at
               FROM usuarios u
               JOIN perfil_acesso pa ON pa.id_perfil = u.id_perfil
+              JOIN empresas e ON e.id_empresa = u.id_empresa
              WHERE u.id_usuario = %(id)s
             """,
             {"id": usuario_id},
         )
-        if not usuario or not int(usuario.get("ativo") or 0):
+        if not linha or not int(linha.get("ativo") or 0):
             raise nao_autorizado()
-        empresa = _empresa_de(conn, int(usuario["id_empresa"]))
+        # Separa os campos da empresa (prefixo emp_) dos campos do usuário.
+        empresa = {
+            "id_empresa": linha.pop("emp_id_empresa"),
+            "cnpj": linha.pop("emp_cnpj"),
+            "razao_social": linha.pop("emp_razao_social"),
+            "nome_fantasia": linha.pop("emp_nome_fantasia"),
+            "inscricao_estadual": linha.pop("emp_inscricao_estadual"),
+            "inscricao_municipal": linha.pop("emp_inscricao_municipal"),
+            "regime_tributario": linha.pop("emp_regime_tributario"),
+            "cep": linha.pop("emp_cep"),
+            "logradouro": linha.pop("emp_logradouro"),
+            "numero": linha.pop("emp_numero"),
+            "complemento": linha.pop("emp_complemento"),
+            "bairro": linha.pop("emp_bairro"),
+            "cidade": linha.pop("emp_cidade"),
+            "uf": linha.pop("emp_uf"),
+            "telefone": linha.pop("emp_telefone"),
+            "email": linha.pop("emp_email"),
+            "site": linha.pop("emp_site"),
+            "logo_url": linha.pop("emp_logo_url"),
+            "fuso_horario": linha.pop("emp_fuso_horario"),
+            "moeda": linha.pop("emp_moeda"),
+            "idioma": linha.pop("emp_idioma"),
+            "janela_a_vencer_dias": linha.pop("emp_janela_a_vencer_dias"),
+            "created_at": linha.pop("emp_created_at"),
+            "updated_at": linha.pop("emp_updated_at"),
+        }
+        usuario = linha
     return Sessao(usuario, empresa)
 
 
