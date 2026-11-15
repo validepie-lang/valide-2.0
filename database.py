@@ -91,12 +91,14 @@ if DB_ENGINE != "postgres":
 SQL_BOOL_TRUE = "TRUE" if DB_ENGINE == "postgres" else "1"
 SQL_BOOL_FALSE = "FALSE" if DB_ENGINE == "postgres" else "0"
 
-# Pool de conexões PostgreSQL (lazy: criado na primeira requisição).
-# Sem pool, cada chamada HTTP abria uma nova conexão TCP+SSL com o Supabase,
-# adicionando centenas de ms por requisição. O ThreadedConnectionPool é
-# thread-safe, adequado para o Uvicorn. Conexões são reaproveitadas entre
-# requisições; o `conn.close()` devolve a conexão ao pool em vez de fechá-la.
-_pg_pool = None
+# Conexão PostgreSQL por thread (thread-local).
+# Cada thread do Uvicorn mantém uma conexão própria, evitando o handshake
+# TCP+SSL a cada requisição. Antes de usar, a conexão é validada com SELECT 1;
+# se estiver quebrada (Supabase fecha conexões ociosas), é recriada.
+# É mais estável que o ThreadedConnectionPool do psycopg2, que apresentava
+# erros intermitentes de 500 ao devolver conexões em estado inválido ao pool.
+import threading
+_pg_local = threading.local()
 
 
 # ============================================================
@@ -399,14 +401,18 @@ class DatabaseConnection:
     @staticmethod
     def _get_postgres_conn():
         """
-        Retorna uma conexão do pool com PostgreSQL/Supabase.
+        Retorna uma conexão PostgreSQL/Supabase para a thread atual.
 
-        A primeira chamada cria o pool (ThreadedConnectionPool). As chamadas
-        seguintes reaproveitam conexões abertas, evitando o handshake TCP+SSL
-        a cada requisição. O `conn.close()` devolve a conexão ao pool em vez
-        de fechá-la fisicamente.
+        Cada thread do Uvicorn mantém sua própria conexão (thread-local),
+        evitando o handshake TCP+SSL a cada requisição. Antes de usar, a
+        conexão é validada com SELECT 1; se estiver quebrada (Supabase fecha
+        conexões ociosas após alguns minutos), é recriada automaticamente.
+
+        O `conn.close()` NÃO fecha a conexão fisicamente — ela permanece
+        armazenada para a próxima requisição da mesma thread. O rollback
+        garante que nenhuma transação pendente seja carregada para o próximo
+        uso.
         """
-        global _pg_pool
         required = ["SUPABASE_HOST", "SUPABASE_PORT", "SUPABASE_DB",
                     "SUPABASE_USER", "SUPABASE_PASSWORD"]
         faltando = [var for var in required if not os.getenv(var)]
@@ -416,10 +422,22 @@ class DatabaseConnection:
                 + ", ".join(faltando)
             )
         try:
-            if _pg_pool is None:
-                _pg_pool = pgpool.ThreadedConnectionPool(
-                    minconn=1,
-                    maxconn=10,
+            conn = getattr(_pg_local, "conn", None)
+            # Valida a conexão; se quebrada, recria.
+            if conn is not None:
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT 1")
+                    conn.rollback()  # limpa transação pendente do uso anterior
+                except Exception:
+                    # Conexão quebrada: fecha e força recriação abaixo.
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    conn = None
+            if conn is None:
+                conn = psycopg2.connect(
                     host=os.getenv("SUPABASE_HOST"),
                     port=os.getenv("SUPABASE_PORT", "5432"),
                     dbname=os.getenv("SUPABASE_DB", "postgres"),
@@ -427,21 +445,7 @@ class DatabaseConnection:
                     password=os.getenv("SUPABASE_PASSWORD"),
                     sslmode=os.getenv("SUPABASE_SSLMODE", "require"),
                 )
-            conn = _pg_pool.getconn()
-            # Testa se a conexão ainda está viva. Conexões do pool podem ficar
-            # quebradas após inatividade (Supabase fecha conexões ociosas).
-            # Se falhar, descartamos e tentamos uma nova (até 3 tentativas).
-            for tentativa in range(3):
-                try:
-                    with conn.cursor() as cur:
-                        cur.execute("SELECT 1")
-                    conn.rollback()  # limpa qualquer transação pendente
-                    break
-                except (OperationalError, Exception):
-                    _pg_pool.putconn(conn, close=True)  # descarta conexão quebrada
-                    conn = _pg_pool.getconn()
-            else:
-                raise ValideError("Não foi possível obter uma conexão válida do pool")
+                _pg_local.conn = conn
             # Controlamos transação manualmente (commit/rollback explícitos)
             conn.autocommit = False
             return conn

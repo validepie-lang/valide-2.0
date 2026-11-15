@@ -28,14 +28,15 @@ def conexao() -> Iterator[Any]:
     try:
         yield conn
     finally:
-        # Garante que a conexão volte ao pool sem transação pendente.
-        # Sem isso, uma conexão que passou por erro fica em estado inválido
-        # e quebra a próxima requisição que a retirar do pool.
+        # Limpa qualquer transação pendente antes de devolver a conexão.
         try:
             conn.rollback()
         except Exception:
             pass
-        conn.close()
+        # No Postgres, a conexão é thread-local e reutilizada entre requisições,
+        # então não fechamos. No SQLite, cada conexão é nova e deve ser fechada.
+        if DB_ENGINE == "sqlite":
+            conn.close()
 
 
 @contextmanager
@@ -59,7 +60,8 @@ def transacao() -> Iterator[Any]:
             pass
         raise
     finally:
-        conn.close()
+        if DB_ENGINE == "sqlite":
+            conn.close()
 
 
 def _preparar(conn) -> None:
