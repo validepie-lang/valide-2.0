@@ -1,4 +1,4 @@
-import { API_BASE_URL, REQUEST_TIMEOUT_MS } from "@/lib/api/config"
+import { currentApiBaseUrl, REQUEST_TIMEOUT_MS } from "@/lib/api/config"
 import { ApiError, fallbackMessage, kindFromStatus, toApiError } from "@/lib/api/errors"
 import { getSessionCookieHeader } from "@/lib/api/session-token"
 import type { Paginated } from "@/lib/types"
@@ -6,7 +6,8 @@ import type { Paginated } from "@/lib/types"
 type Query = Record<string, string | number | boolean | undefined | null>
 
 function buildUrl(path: string, query?: Query): string {
-  const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`
+  const base = currentApiBaseUrl()
+  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`
   if (!query) return url
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {

@@ -25,6 +25,29 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? ""
 
 /**
+ * URL base usada pelas chamadas feitas NO SERVIDOR (Server Components).
+ *
+ * Aponta direto para o backend, sem passar pelo proxy da própria Vercel.
+ * Sem isso, o servidor chamaria a URL pública do site, que reescreve para o
+ * backend: um salto de rede inteiro a mais em cada busca de tela. O cookie de
+ * sessão é repassado no header, então a autorização continua igual.
+ *
+ * A variável API_ORIGIN não tem o prefixo NEXT_PUBLIC_ de propósito: ela só
+ * precisa existir no servidor. Sem ela, o servidor cai para a URL pública.
+ */
+export const SERVER_API_BASE_URL = process.env.API_ORIGIN
+  ? `${process.env.API_ORIGIN.replace(/\/+$/, "")}/api/v1`
+  : API_BASE_URL
+
+/**
+ * A base da vez: no navegador, a URL pública (proxy same-origin, que preserva
+ * o cookie); no servidor, o backend direto.
+ */
+export function currentApiBaseUrl(): string {
+  return typeof window === "undefined" ? SERVER_API_BASE_URL : API_BASE_URL
+}
+
+/**
  * Lista separada por vírgula das áreas já ligadas na API.
  * `NEXT_PUBLIC_API_LIVE="auth,folders"` liga só essas duas.
  * `NEXT_PUBLIC_API_LIVE="all"` liga tudo.
