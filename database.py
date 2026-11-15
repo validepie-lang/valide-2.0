@@ -412,15 +412,23 @@ class DatabaseConnection:
         armazenada para a próxima requisição da mesma thread. O rollback
         garante que nenhuma transação pendente seja carregada para o próximo
         uso.
+
+        Conexão pode ser feita de duas formas:
+          1) DATABASE_URL (preferida no Render — injetada automaticamente
+             quando o banco Postgres do Render está ligado ao serviço).
+          2) Variáveis SUPABASE_* (host, port, db, user, password, sslmode).
         """
-        required = ["SUPABASE_HOST", "SUPABASE_PORT", "SUPABASE_DB",
-                    "SUPABASE_USER", "SUPABASE_PASSWORD"]
-        faltando = [var for var in required if not os.getenv(var)]
-        if faltando:
-            raise ValideError(
-                "Variáveis do Supabase ausentes no arquivo .env: "
-                + ", ".join(faltando)
-            )
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            required = ["SUPABASE_HOST", "SUPABASE_PORT", "SUPABASE_DB",
+                        "SUPABASE_USER", "SUPABASE_PASSWORD"]
+            faltando = [var for var in required if not os.getenv(var)]
+            if faltando:
+                raise ValideError(
+                    "Variáveis do banco ausentes no arquivo .env: "
+                    + ", ".join(faltando)
+                    + " (ou defina DATABASE_URL)"
+                )
         try:
             conn = getattr(_pg_local, "conn", None)
             # Valida a conexão; se quebrada, recria.
@@ -437,21 +445,25 @@ class DatabaseConnection:
                         pass
                     conn = None
             if conn is None:
-                conn = psycopg2.connect(
-                    host=os.getenv("SUPABASE_HOST"),
-                    port=os.getenv("SUPABASE_PORT", "5432"),
-                    dbname=os.getenv("SUPABASE_DB", "postgres"),
-                    user=os.getenv("SUPABASE_USER"),
-                    password=os.getenv("SUPABASE_PASSWORD"),
-                    sslmode=os.getenv("SUPABASE_SSLMODE", "require"),
-                )
+                if db_url:
+                    # Render injeta DATABASE_URL automaticamente.
+                    conn = psycopg2.connect(db_url)
+                else:
+                    conn = psycopg2.connect(
+                        host=os.getenv("SUPABASE_HOST"),
+                        port=os.getenv("SUPABASE_PORT", "5432"),
+                        dbname=os.getenv("SUPABASE_DB", "postgres"),
+                        user=os.getenv("SUPABASE_USER"),
+                        password=os.getenv("SUPABASE_PASSWORD"),
+                        sslmode=os.getenv("SUPABASE_SSLMODE", "require"),
+                    )
                 _pg_local.conn = conn
             # Controlamos transação manualmente (commit/rollback explícitos)
             conn.autocommit = False
             return conn
         except OperationalError as erro:
             raise ValideError(
-                f"Falha na conexão com PostgreSQL/Supabase: {erro}"
+                f"Falha na conexão com PostgreSQL: {erro}"
             ) from erro
 
     # --------------------------------------------------------------

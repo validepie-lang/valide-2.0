@@ -17,3 +17,6 @@ __pycache__/
 
 # Uploads gerados em tempo de execucao
 data/uploads/
+
+# Dump de dados exportado para migracao (contem dados reais)
+supabase_export.sql
