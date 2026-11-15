@@ -428,6 +428,20 @@ class DatabaseConnection:
                     sslmode=os.getenv("SUPABASE_SSLMODE", "require"),
                 )
             conn = _pg_pool.getconn()
+            # Testa se a conexão ainda está viva. Conexões do pool podem ficar
+            # quebradas após inatividade (Supabase fecha conexões ociosas).
+            # Se falhar, descartamos e tentamos uma nova (até 3 tentativas).
+            for tentativa in range(3):
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT 1")
+                    conn.rollback()  # limpa qualquer transação pendente
+                    break
+                except (OperationalError, Exception):
+                    _pg_pool.putconn(conn, close=True)  # descarta conexão quebrada
+                    conn = _pg_pool.getconn()
+            else:
+                raise ValideError("Não foi possível obter uma conexão válida do pool")
             # Controlamos transação manualmente (commit/rollback explícitos)
             conn.autocommit = False
             return conn
