@@ -1,9 +1,11 @@
+import { Suspense } from "react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Logo } from "@/components/layout/logo"
 import { BottomNav, SideRail } from "@/components/layout/side-rail"
 import { HeaderSearch, ThemeToggle, UserMenu } from "@/components/layout/header-actions"
 import { NotificationsMenu } from "@/components/layout/notifications-menu"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ApiError } from "@/lib/api/errors"
 import { optional } from "@/lib/api/safe"
 import { getNotifications } from "@/lib/services/notifications"
@@ -28,13 +30,43 @@ async function loadSession(): Promise<{ user: User; company: Company } | null> {
   }
 }
 
-export async function AppShell({ children }: { children: React.ReactNode }) {
+/**
+ * Conta e avisos do topo, buscados **dentro** do próprio `<Suspense>`.
+ *
+ * Antes esse `await` vivia no corpo de `AppShell`, que é o layout da área
+ * logada: enquanto ele não resolvia, nada abaixo era enviado — nem o cabeçalho
+ * nem o `loading.tsx` da tela, que vive dentro do layout. A tela ficava parada
+ * na tela anterior mesmo com o dado demorando.
+ *
+ * Aqui o `AppShell` devolve a estrutura na hora e só os dois botões esperam,
+ * no lugar já reservado por `HeaderActionsSkeleton`.
+ */
+async function HeaderActions() {
   const [session, notifications] = await Promise.all([
     loadSession(),
     // Fora do ar, o sino some e o resto do app continua
     optional<Notification[] | null>(getNotifications(), null),
   ])
 
+  return (
+    <>
+      {notifications ? <NotificationsMenu items={notifications} /> : null}
+      {session ? <UserMenu user={session.user} company={session.company.tradeName} /> : null}
+    </>
+  )
+}
+
+/** Os dois botões do topo (sino e conta) no tamanho real, para nada pular. */
+function HeaderActionsSkeleton() {
+  return (
+    <>
+      <Skeleton className="size-11 rounded-pill md:size-10" />
+      <Skeleton className="size-11 rounded-pill md:size-10" />
+    </>
+  )
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-page">
       {/* Primeira parada do Tab. Some da tela até receber foco. */}
@@ -65,8 +97,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             <div className="ml-auto flex items-center gap-2">
               {/* No desktop o tema mora no trilho */}
               <ThemeToggle className="md:hidden" />
-              {notifications ? <NotificationsMenu items={notifications} /> : null}
-              {session ? <UserMenu user={session.user} company={session.company.tradeName} /> : null}
+              {/* Conta e avisos não prendem a tela: chegam no lugar reservado */}
+              <Suspense fallback={<HeaderActionsSkeleton />}>
+                <HeaderActions />
+              </Suspense>
             </div>
           </div>
         </header>
