@@ -74,7 +74,7 @@ SQLITE_PATH = os.getenv("SQLITE_PATH",
 if DB_ENGINE == "postgres":
     try:
         import psycopg2
-        from psycopg2 import OperationalError
+        from psycopg2 import OperationalError, pool as pgpool
         from psycopg2.extras import RealDictCursor
     except ImportError:
         print("[AVISO] PostgreSQL selecionado, mas a biblioteca 'psycopg2'"
@@ -90,6 +90,13 @@ if DB_ENGINE != "postgres":
 # Constantes para comparação de valores booleanos (dual-engine)
 SQL_BOOL_TRUE = "TRUE" if DB_ENGINE == "postgres" else "1"
 SQL_BOOL_FALSE = "FALSE" if DB_ENGINE == "postgres" else "0"
+
+# Pool de conexões PostgreSQL (lazy: criado na primeira requisição).
+# Sem pool, cada chamada HTTP abria uma nova conexão TCP+SSL com o Supabase,
+# adicionando centenas de ms por requisição. O ThreadedConnectionPool é
+# thread-safe, adequado para o Uvicorn. Conexões são reaproveitadas entre
+# requisições; o `conn.close()` devolve a conexão ao pool em vez de fechá-la.
+_pg_pool = None
 
 
 # ============================================================
@@ -392,9 +399,14 @@ class DatabaseConnection:
     @staticmethod
     def _get_postgres_conn():
         """
-        Abre conexão com PostgreSQL/Supabase usando as variáveis SUPABASE_*
-        do .env. Falta de alguma variável OU erro de rede levanta exceção.
+        Retorna uma conexão do pool com PostgreSQL/Supabase.
+
+        A primeira chamada cria o pool (ThreadedConnectionPool). As chamadas
+        seguintes reaproveitam conexões abertas, evitando o handshake TCP+SSL
+        a cada requisição. O `conn.close()` devolve a conexão ao pool em vez
+        de fechá-la fisicamente.
         """
+        global _pg_pool
         required = ["SUPABASE_HOST", "SUPABASE_PORT", "SUPABASE_DB",
                     "SUPABASE_USER", "SUPABASE_PASSWORD"]
         faltando = [var for var in required if not os.getenv(var)]
@@ -404,14 +416,18 @@ class DatabaseConnection:
                 + ", ".join(faltando)
             )
         try:
-            conn = psycopg2.connect(
-                host=os.getenv("SUPABASE_HOST"),
-                port=os.getenv("SUPABASE_PORT", "5432"),
-                dbname=os.getenv("SUPABASE_DB", "postgres"),
-                user=os.getenv("SUPABASE_USER"),
-                password=os.getenv("SUPABASE_PASSWORD"),
-                sslmode=os.getenv("SUPABASE_SSLMODE", "require"),
-            )
+            if _pg_pool is None:
+                _pg_pool = pgpool.ThreadedConnectionPool(
+                    minconn=1,
+                    maxconn=10,
+                    host=os.getenv("SUPABASE_HOST"),
+                    port=os.getenv("SUPABASE_PORT", "5432"),
+                    dbname=os.getenv("SUPABASE_DB", "postgres"),
+                    user=os.getenv("SUPABASE_USER"),
+                    password=os.getenv("SUPABASE_PASSWORD"),
+                    sslmode=os.getenv("SUPABASE_SSLMODE", "require"),
+                )
+            conn = _pg_pool.getconn()
             # Controlamos transação manualmente (commit/rollback explícitos)
             conn.autocommit = False
             return conn
