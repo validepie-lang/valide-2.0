@@ -28,6 +28,13 @@ def conexao() -> Iterator[Any]:
     try:
         yield conn
     finally:
+        # Garante que a conexão volte ao pool sem transação pendente.
+        # Sem isso, uma conexão que passou por erro fica em estado inválido
+        # e quebra a próxima requisição que a retirar do pool.
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         conn.close()
 
 
@@ -46,7 +53,10 @@ def transacao() -> Iterator[Any]:
         yield conn
         conn.commit()
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
         conn.close()
